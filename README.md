@@ -77,99 +77,62 @@ Usando um caso de uso realista: **sistema de suporte ao cliente** com análise a
 
 ### Pré-requisitos
 
-- ✅ Docker e Docker Compose instalados
+- ✅ Podman Desktop instalado (substituto do Docker para PCs corporativos)
+- ✅ Python 3.9+ instalado
 - ✅ Chaves de API configuradas no `.env`
 
-### 🐳 Setup com Docker (Recomendado)
+> **Nota:** O projeto foi adaptado para usar **Podman** em vez de Docker, compatível com ambientes corporativos onde o Docker Desktop não pode ser instalado.
 
-Todo o ambiente roda em containers. Não precisa de venv, pip install, nem versão específica de Python na máquina.
+### ⚡ Setup Automático (Recomendado)
+
+Um único script configura todo o ambiente: venv Python, dependências, containers e banco de dados.
+
+```powershell
+cd modulo2_semana1
+.\setup.ps1
+```
+
+Após o setup, edite o `.env` gerado com suas chaves de API e execute os exercícios.
+
+---
+
+### 🐳 Setup Manual com Podman
 
 #### 1️⃣ Subir os serviços
 
-```bash
-docker compose up -d
+```powershell
+cd modulo2_semana1
+.\podman_start.ps1
 ```
 
 Isso sobe:
-- `agentes_postgres` — PostgreSQL 16 com banco `suporte_ai`
-- `agentes_qdrant` — Banco vetorial Qdrant
-- `agentes_pgadmin` — Interface web para PostgreSQL
-- `agentes_app` — Python 3.12 com todas as dependências
+- `postgres_db` — PostgreSQL 16 com pgvector na porta `5450`
+- `pgadmin` — Interface web na porta `5050`
 
-#### 2️⃣ Carregar dados no banco
+#### 2️⃣ Criar ambiente virtual e instalar dependências
 
-```bash
-docker compose exec app python load_data.py
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 ```
 
 #### 3️⃣ Rodar scripts
 
-```bash
-docker compose exec app python exemplos_exercicios/agentes/topic_tools/exe1/run_support_agent.py
+```powershell
+python modulo2_semana1\jun8\exe1\support_agent_basic.py
 ```
 
-#### 4️⃣ Shell interativo
+#### 4️⃣ Parar tudo
 
-```bash
-docker compose exec app bash
-```
-
-#### 5️⃣ Parar tudo
-
-```bash
-docker compose down
+```powershell
+.\podman_stop.ps1
 ```
 
 Para remover também os dados:
 
-```bash
-docker compose down -v
-```
-
----
-
-### 🐍 Setup Local (Alternativa)
-
-Se preferir rodar sem Docker, você precisa de Python 3.9+ e PostgreSQL rodando na porta 5432.
-
-#### 1️⃣ Criar ambiente virtual
-
-```bash
-python -m venv .venv
-```
-
-**Mac/Linux:**
-```bash
-source .venv/bin/activate
-```
-
-**Windows:**
-```bash
-.venv\Scripts\activate
-```
-
-#### 2️⃣ Instalar dependências
-
-```bash
-pip install -r requirements.txt
-```
-
-#### 3️⃣ Subir apenas o banco via Docker
-
-```bash
-docker compose up -d postgres qdrant
-```
-
-#### 4️⃣ Carregar dados
-
-```bash
-python load_data.py
-```
-
-#### 5️⃣ Rodar scripts
-
-```bash
-python exemplos_exercicios/agentes/topic_tools/exe1/run_support_agent.py
+```powershell
+.\podman_stop.ps1 -Clean
 ```
 
 ---
@@ -375,36 +338,22 @@ chmod +x start_langfuse.sh
 
 | Problema | Solução |
 |----------|---------|
-| Docker não conecta | Abrir Docker Desktop e verificar se está rodando |
-| Porta 5432 ocupada | Alterar no compose: `"5433:5432"` |
-| Tabela não existe | `docker compose down -v` e subir novamente |
-| Erro ao puxar imagem | `docker pull postgres:16` ou desligar VPN |
-| Containers não param | `docker rm -f agentes_pgadmin agentes_postgres agentes_qdrant` |
-| Erro de permissão | `chmod +x start_langfuse.sh` |
+| Containers não sobem | Abrir Podman Desktop e aguardar a VM iniciar |
+| Porta 5450 ocupada | Alterar no `podman_start.ps1`: `-p 5451:5432` |
+| Tabela não existe | `.\podman_stop.ps1 -Clean` e depois `.\setup.ps1` |
+| Erro ao puxar imagem | Desligar VPN e tentar novamente |
+| Containers não param | `wsl -d podman-machine-default -- podman rm -f postgres_db pgadmin` |
 
 ---
 
 ### 📊 Verificar o Banco
 
-**Via Docker:**
-```bash
-docker exec -it agentes_postgres psql -U admin -d suporte_ai
-```
-
-**Dentro do psql:**
-```sql
-\dt                              -- Listar tabelas
-SELECT COUNT(*) FROM conversations;
-SELECT COUNT(*) FROM feedbacks;
-\q                               -- Sair
+```powershell
+wsl -d podman-machine-default -- podman exec postgres_db psql -U postgres -d mydb -c "SELECT COUNT(*) FROM conversations;"
 ```
 
 **Tabelas esperadas:**
-- `conversations`
-- `agent_configs`
-- `agent_runs`
-- `feedbacks`
-- `tickets`
+- `conversations`, `agent_configs`, `agent_runs`, `feedbacks`, `tickets`, `backlog`, e mais 6 tabelas
 
 ---
 

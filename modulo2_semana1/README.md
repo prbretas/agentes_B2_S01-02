@@ -1,274 +1,189 @@
-# 🐘 PostgreSQL com Docker Compose
+# 🐘 PostgreSQL com Podman
 
-Configuração simples e pronta para uso do PostgreSQL com Docker Compose, incluindo PgAdmin para gerenciamento visual.
+Configuração pronta para uso do PostgreSQL + PgAdmin com **Podman** no Windows.
 
-## Você precisa instalar o docker 
-### Windows
-1. Instalar Docker Desktop
-
-Baixar:
-
-Docker Desktop Download
-
-Instalar normalmente.
-
-2. Reiniciar o computador
-
-O Docker normalmente instala:
-
-WSL2
-Docker Engine
-Docker Compose
-
-e pede reboot.
-
-3. Verificar instalação
-
-Abra PowerShell:
-
-docker --version
-
-Exemplo:
-
-Docker version 28.x.x
-
-Verifique também:
-
-docker compose version
-### Mac
-Apple Silicon (M1/M2/M3)
-
-Baixar:
-
-Docker Desktop Download
-
-Escolher:
-
-Mac with Apple Chip
-
-Instalar e abrir o Docker Desktop.
-
-Verificar:
-
-docker --version
-docker compose version
-Teste rápido
-
-Rodar:
-
-docker run hello-world
-
-Resultado esperado:
-
-Hello from Docker!
-Rodar o projeto
-
-Entrar na pasta:
-
-cd suporte_ai
-
-Subir containers:
-
-docker compose up -d
-
-Verificar:
-
-docker ps
-
-Deve aparecer algo parecido com:
-
-postgres_db
-pgadmin
----
-
-## 📋 O que está incluído?
-
-- **PostgreSQL 16 com pgvector** - Banco de dados relacional + suporte a embeddings para RAG
-- **PgAdmin 4** - Interface web para gerenciar o PostgreSQL
-- **Script de inicialização** - Cria tabelas e dados de exemplo automaticamente
-- **Tabela de documentos com embeddings** - Pronta para usar em sistemas RAG
-- **Função de busca vetorial** - `match_documents()` para similarity search
+> **Por que Podman e não Docker?**  
+> Em PCs corporativos onde o Docker Desktop é bloqueado, o Podman é o substituto ideal — compatível com os mesmos comandos e arquivos, sem precisar de serviço com privilégios de admin.
 
 ---
 
-## 🚀 Como usar
+## ⚡ Setup automático (recomendado)
 
-### 🎯 Escolha sua ferramenta preferida
+Um único script configura tudo: venv Python, dependências, containers e banco de dados.
 
-Você pode interagir com o PostgreSQL de várias formas:
+```powershell
+# Na pasta modulo2_semana1:
+.\setup.ps1
+```
 
-| Ferramenta | Nível | Prós | Contras |
-|------------|-------|------|---------|
-| **Terminal (psql)** | Intermediário | ✅ Rápido<br>✅ Scriptável<br>✅ Sempre disponível | ❌ Menos visual<br>❌ Curva de aprendizado |
-| **DBeaver** 🌟 | Iniciante | ✅ Interface visual<br>✅ Gratuito<br>✅ Autocomplete<br>✅ Multiplataforma | ❌ Precisa instalar |
-| **PgAdmin** | Intermediário | ✅ Oficial PostgreSQL<br>✅ Já incluído no Docker | ❌ Interface menos amigável |
-| **Python/código** | Avançado | ✅ Automação<br>✅ Integração apps | ❌ Requer código |
+O que ele faz automaticamente:
+1. Verifica Python e Podman/WSL
+2. Cria o arquivo `.env` com modelo (se não existir)
+3. Cria o ambiente virtual `.venv` e instala todas as dependências
+4. Sobe PostgreSQL + PgAdmin via Podman
+5. Valida que o banco está acessível e com dados
 
-**💡 Recomendação**: Se você está começando, use o **DBeaver** para visualizar e o **terminal** para queries rápidas!
+Depois do setup, só edite o `.env` com suas chaves de API e comece a rodar os exercícios.
+
+**Opções do script:**
+```powershell
+.\setup.ps1              # setup completo
+.\setup.ps1 -SkipVenv    # pula criação do venv (já existe)
+.\setup.ps1 -SkipPodman  # pula os containers (só configura Python)
+```
 
 ---
 
-### 1. Subir os containers
+## 📋 O que está incluído
 
-No diretório `modulo2_semana1`, execute:
-
-```bash
-docker-compose up -d
-```
-
-### 2. Verificar se os containers estão rodando
-
-```bash
-docker-compose ps
-```
-
-### 3. Acessar os serviços
-
-#### PostgreSQL
-- **Host**: `localhost`
-- **Porta**: `5450`
-- **Usuário**: `postgres`
-- **Senha**: `postgres123`
-- **Database**: `mydb`
-
-**String de conexão:**
-```
-postgresql://postgres:postgres123@localhost:5450/mydb
-```
-
-#### PgAdmin (Interface Web)
-- **URL**: http://localhost:5050
-- **Email**: `admin@admin.com`
-- **Senha**: `admin123`
+- **PostgreSQL 16 com pgvector** — banco relacional + suporte a embeddings para RAG
+- **PgAdmin 4** — interface web para gerenciar o PostgreSQL
+- **init.sql** — cria todas as tabelas e carrega dados de exemplo automaticamente
+- **podman_start.ps1** — script que sobe tudo com um comando
+- **podman_stop.ps1** — script que para os containers (com opção de limpar dados)
 
 ---
 
-## 🔌 Conectar ao PostgreSQL
+## ⚙️ Pré-requisitos
 
-### Opção 1: Via Terminal (psql) - Linha de comando
+1. **Podman Desktop** instalado (sem precisar de admin para o app em si)  
+   Download: https://podman-desktop.io/downloads/windows
 
-#### Entrar no console PostgreSQL interativo:
+2. **WSL2 ativo** com a distro `podman-machine-default` (criada automaticamente pelo Podman Desktop)
 
-```bash
-docker exec -it postgres_db psql -U postgres -d mydb
+3. Verifique no PowerShell:
+   ```powershell
+   wsl --list
+   # deve aparecer: podman-machine-default
+   ```
+
+---
+
+## 🚀 Subir o ambiente
+
+### Uma linha — o script cuida de tudo
+
+```powershell
+cd modulo2_semana1
+.\podman_start.ps1
 ```
 
-#### Executar queries diretas no terminal:
+O script:
+- Cria a network necessária (com `--disable-dns`, solução para WSL sem systemd)
+- Sobe `postgres_db` na porta `5450`
+- Sobe `pgadmin` na porta `5050`
+- Na segunda execução, apenas reinicia os containers existentes (dados preservados)
 
-```bash
-# Listar tabelas
-docker exec postgres_db psql -U postgres -d mydb -c "\dt"
+**Saída esperada:**
+```
+=== Podman Start — modulo2_semana1 ===
 
-# Ver conversas
-docker exec postgres_db psql -U postgres -d mydb -c "SELECT * FROM conversations;"
+→ Network 'modulo2_semana1_default' já existe.
+→ Iniciando container existente 'postgres_db'...
+→ Iniciando container existente 'pgadmin'...
 
+→ Aguardando containers iniciarem...
 
+NAMES        STATUS        PORTS
+postgres_db  Up 3 seconds  0.0.0.0:5450->5432/tcp
+pgadmin      Up 3 seconds  0.0.0.0:5050->80/tcp
+
+✅ Pronto!
+
+   PostgreSQL : localhost:5450  (user: postgres / senha: postgres123 / db: mydb)
+   PgAdmin    : http://localhost:5050  (email: admin@admin.com / senha: admin123)
 ```
 
-#### Comandos úteis dentro do psql (após conectar):
+---
 
+## 🛑 Parar o ambiente
+
+```powershell
+# Para containers — dados preservados
+.\podman_stop.ps1
+
+# Remove containers e volumes — ⚠️ apaga todos os dados
+.\podman_stop.ps1 -Clean
+```
+
+---
+
+## 🔌 Dados de conexão
+
+| Serviço    | Endereço              | Usuário           | Senha        |
+|------------|-----------------------|-------------------|--------------|
+| PostgreSQL | `localhost:5450`      | `postgres`        | `postgres123`|
+| PgAdmin    | http://localhost:5050 | `admin@admin.com` | `admin123`   |
+
+**String de conexão SQLAlchemy** (usada nos exercícios):
+```
+postgresql+psycopg2://postgres:postgres123@localhost:5450/mydb
+```
+
+---
+
+## 🗂️ Tabelas criadas pelo init.sql
+
+| Tabela           | Conteúdo                                      |
+|------------------|-----------------------------------------------|
+| `conversations`  | Histórico de tickets de suporte (30 registros)|
+| `agent_runs`     | Execuções dos agentes                         |
+| `agent_configs`  | Configurações dos agentes                     |
+| `feedbacks`      | Feedbacks de clientes (30 registros)          |
+| `tickets`        | Tickets simples                               |
+| `backlog`        | Itens de backlog de desenvolvimento           |
+| `ticket_memory`  | Memória dos agentes por ticket                |
+| `sensitive_items`| Itens sensíveis (exercício de guardrails)     |
+| `internal_notes` | Notas internas de atendimento                 |
+| `knowledge_bases`| Bases de conhecimento                         |
+| `kb_documents`   | Documentos das bases                          |
+| `kb_chunks`      | Chunks dos documentos com metadados           |
+
+---
+
+## 💻 Comandos diretos via terminal
+
+Todos os comandos abaixo usam `wsl -d podman-machine-default` para chamar o Podman dentro do WSL.
+
+### Verificar containers rodando
+```powershell
+wsl -d podman-machine-default -- podman ps
+```
+
+### Entrar no console psql interativo
+```powershell
+wsl -d podman-machine-default -- podman exec -it postgres_db psql -U postgres -d mydb
+```
+
+Dentro do psql:
 ```sql
--- Listar todas as tabelas
-\dt
-
--- Descrever estrutura de uma tabela
-\d usuarios
-
--- Listar todos os bancos de dados
-\l
-
--- Sair do psql
-\q
-
--- Ver todos os comandos disponíveis
-\?
+\dt                              -- listar tabelas
+SELECT COUNT(*) FROM conversations;
+SELECT COUNT(*) FROM feedbacks;
+\q                               -- sair
 ```
 
-### Opção 2: DBeaver (Recomendado para Iniciantes!) 🌟
-
-**DBeaver** é uma ferramenta visual **gratuita** e **open-source** para gerenciar bancos de dados.
-
-#### Como instalar:
-
-**macOS:**
-```bash
-brew install --cask dbeaver-community
+### Executar query direta (sem entrar no psql)
+```powershell
+wsl -d podman-machine-default -- podman exec postgres_db psql -U postgres -d mydb -c "SELECT * FROM conversations LIMIT 5;"
 ```
 
-**Windows:**
-- Baixe em: https://dbeaver.io/download/
-- Execute o instalador `.exe`
-
-**Linux:**
-```bash
-# Ubuntu/Debian
-sudo snap install dbeaver-ce
-
-# ou baixe o .deb em https://dbeaver.io/download/
+### Ver logs do PostgreSQL
+```powershell
+wsl -d podman-machine-default -- podman logs postgres_db
 ```
-
-#### Como conectar no DBeaver:
-
-1. Abra o DBeaver
-2. Clique em **Database** → **New Database Connection**
-3. Selecione **PostgreSQL**
-4. Preencha os dados:
-   - **Host**: `localhost`
-   - **Port**: `5450`
-   - **Database**: `mydb`
-   - **Username**: `postgres`
-   - **Password**: `postgres123`
-5. Clique em **Test Connection** (vai baixar os drivers automaticamente na primeira vez)
-6. Clique em **Finish**
-
-Pronto! Agora você pode:
-- ✅ Ver todas as tabelas visualmente
-- ✅ Executar queries com autocomplete
-- ✅ Ver dados em formato de tabela
-- ✅ Exportar dados para CSV/Excel
-- ✅ Criar diagramas ER
-
-
-
-### Opção 3: Via Python
-
-```python
-import psycopg2
-
-conn = psycopg2.connect(
-    host="localhost",
-    port=5432,
-    database="mydb",
-    user="postgres",
-    password="postgres123"
-)
-
-cursor = conn.cursor()
-cursor.execute("SELECT * FROM conversations;")
-rows = cursor.fetchall()
-
-for row in rows:
-    print(row)
-
-conn.close()
-```
-
-### Opção 5: Usar o PgAdmin (já incluído no Docker Compose)
-
-Acesse http://localhost:5050 e siga as instruções na seção "Configurar PgAdmin" abaixo.
 
 ---
 
 ## 🔧 Configurar PgAdmin
 
 1. Acesse http://localhost:5050
-2. Login com `admin@admin.com` / `admin123`
+2. Login: `admin@admin.com` / `admin123`
 3. Clique em **Add New Server**
-4. Na aba **General**:
-   - Name: `Local PostgreSQL`
-5. Na aba **Connection**:
-   - Host: `postgres` (nome do service no docker-compose)
-   - Port: `5450`
+4. Aba **General** → Name: `Local PostgreSQL`
+5. Aba **Connection**:
+   - Host: `postgres_db` (nome do container na network interna)
+   - Port: `5432` (porta interna do container, não a 5450)
    - Database: `mydb`
    - Username: `postgres`
    - Password: `postgres123`
@@ -276,393 +191,51 @@ Acesse http://localhost:5050 e siga as instruções na seção "Configurar PgAdm
 
 ---
 
-## 📊 Tabelas criadas automaticamente
-
-### Tabela `usuarios`
-```sql
-SELECT * FROM usuarios;
-```
-
-| id | nome | email | data_criacao |
-|----|------|-------|--------------|
-| 1 | João Silva | joao@email.com | ... |
-| 2 | Maria Santos | maria@email.com | ... |
-| 3 | Pedro Oliveira | pedro@email.com | ... |
-
-### Tabela `produtos`
-```sql
-SELECT * FROM produtos;
-```
-
-| id | nome | descricao | preco | estoque | data_criacao |
-|----|------|-----------|-------|---------|--------------|
-| 1 | Notebook | Notebook Dell i5... | 3500.00 | 10 | ... |
-| 2 | Mouse | Mouse sem fio... | 150.00 | 50 | ... |
-| 3 | Teclado | Teclado mecânico... | 450.00 | 25 | ... |
-
----
-
-## 💻 Exemplos de Queries via Terminal
-
-### Queries básicas (executar direto no terminal sem entrar no psql):
-
-```bash
-# 1. Ver todos os usuários
-docker exec postgres_db psql -U postgres -d mydb -c "SELECT * FROM usuarios;"
-
-# 2. Ver todos os produtos
-docker exec postgres_db psql -U postgres -d mydb -c "SELECT * FROM produtos;"
-
-# 3. Buscar produto específico
-docker exec postgres_db psql -U postgres -d mydb -c "SELECT * FROM produtos WHERE nome = 'Mouse';"
-
-# 4. Produtos com preço maior que 200
-docker exec postgres_db psql -U postgres -d mydb -c "SELECT nome, preco FROM produtos WHERE preco > 200;"
-
-# 5. Contar quantos produtos existem
-docker exec postgres_db psql -U postgres -d mydb -c "SELECT COUNT(*) as total FROM produtos;"
-
-# 6. Somar valor total do estoque
-docker exec postgres_db psql -U postgres -d mydb -c "SELECT SUM(preco * estoque) as valor_total FROM produtos;"
-
-# 7. Inserir novo usuário
-docker exec postgres_db psql -U postgres -d mydb -c "INSERT INTO usuarios (nome, email) VALUES ('Ana Costa', 'ana@email.com');"
-
-# 8. Atualizar estoque de um produto
-docker exec postgres_db psql -U postgres -d mydb -c "UPDATE produtos SET estoque = 30 WHERE nome = 'Mouse';"
-
-# 9. Deletar um usuário
-docker exec postgres_db psql -U postgres -d mydb -c "DELETE FROM usuarios WHERE email = 'ana@email.com';"
-
-# 10. Ordenar produtos por preço
-docker exec postgres_db psql -U postgres -d mydb -c "SELECT nome, preco FROM produtos ORDER BY preco DESC;"
-```
-
-### Modo interativo (entrar no psql e executar múltiplas queries):
-
-```bash
-# Entrar no console PostgreSQL
-docker exec -it postgres_db psql -U postgres -d mydb
-```
-
-Agora você está dentro do `psql`. Execute queries diretamente:
-
-```sql
--- Listar todas as tabelas
-\dt
-
--- Ver estrutura da tabela usuarios
-\d usuarios
-
--- Buscar usuários
-SELECT * FROM usuarios;
-
--- Buscar produtos com estoque baixo
-SELECT nome, estoque FROM produtos WHERE estoque < 20;
-
--- Criar nova tabela
-CREATE TABLE pedidos (
-    id SERIAL PRIMARY KEY,
-    usuario_id INTEGER REFERENCES usuarios(id),
-    produto_id INTEGER REFERENCES produtos(id),
-    quantidade INTEGER NOT NULL,
-    data_pedido TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Inserir pedido
-INSERT INTO pedidos (usuario_id, produto_id, quantidade) VALUES (1, 2, 3);
-
--- Join entre tabelas
-SELECT 
-    u.nome as usuario, 
-    p.nome as produto, 
-    ped.quantidade,
-    ped.data_pedido
-FROM pedidos ped
-JOIN usuarios u ON ped.usuario_id = u.id
-JOIN produtos p ON ped.produto_id = p.id;
-
--- Sair do psql
-\q
-```
-
----
-
-## 🛠️ Comandos úteis
-
-### Parar os containers
-```bash
-docker-compose stop
-```
-
-### Iniciar containers parados
-```bash
-docker-compose start
-```
-
-### Parar e remover containers
-```bash
-docker-compose down
-```
-
-### Parar e remover containers + volumes (⚠️ apaga os dados!)
-```bash
-docker-compose down -v
-```
-
-### Ver logs do PostgreSQL
-```bash
-docker-compose logs postgres
-```
-
-### Ver logs do PgAdmin
-```bash
-docker-compose logs pgadmin
-```
-
-### Seguir logs em tempo real
-```bash
-docker-compose logs -f postgres
-```
-
----
-
-## 📝 Executar scripts SQL
-
-### Método 1: Via arquivo
-```bash
-docker exec -i postgres_db psql -U postgres -d mydb < seu_script.sql
-```
-
-### Método 2: Via comando direto
-```bash
-docker exec postgres_db psql -U postgres -d mydb -c "SELECT * FROM usuarios;"
-```
-
-### Método 3: Copiar arquivo para dentro do container
-```bash
-docker cp seu_script.sql postgres_db:/tmp/
-docker exec postgres_db psql -U postgres -d mydb -f /tmp/seu_script.sql
-```
-
----
-
-## 🔐 Alterar senhas (opcional)
-
-Edite o arquivo `docker-compose.yml`:
-
-```yaml
-environment:
-  POSTGRES_PASSWORD: sua_senha_forte_aqui  # ← altere aqui
-```
-
-Depois recrie os containers:
-```bash
-docker-compose down -v
-docker-compose up -d
-```
-
----
-
-## 🗂️ Persistência de dados
-
-Os dados do PostgreSQL são armazenados em um **volume Docker** chamado `postgres_data`. Isso significa que:
-
-- ✅ Os dados persistem mesmo após `docker-compose down`
-- ✅ Você pode parar e iniciar os containers sem perder dados
-- ⚠️ Use `docker-compose down -v` **apenas** se quiser apagar todos os dados
-
----
-
-## 🐛 Troubleshooting
-
-### Porta 5432 já está em uso
-Se você já tem PostgreSQL instalado localmente:
-
-**Opção 1**: Pare o PostgreSQL local
-```bash
-# macOS
-brew services stop postgresql
-
-# Linux
-sudo systemctl stop postgresql
-```
-
-**Opção 2**: Altere a porta no docker-compose.yml
-```yaml
-ports:
-  - "5433:5432"  # ← use porta 5433 no host
-```
-
-### Container não inicia
-Verifique os logs:
-```bash
-docker-compose logs postgres
-```
-
-### Resetar tudo do zero
-```bash
-docker-compose down -v
-docker volume rm modulo2_semana1_postgres_data
-docker-compose up -d
-```
-
----
-
-## 📚 Recursos adicionais
-
-- [PostgreSQL Docs](https://www.postgresql.org/docs/)
-- [PgAdmin Docs](https://www.pgadmin.org/docs/)
-- [Docker Compose Docs](https://docs.docker.com/compose/)
-
----
-
-## 🎯 Próximos passos
-
-1. ✅ Subir os containers
-2. ✅ Conectar via PgAdmin ou DBeaver
-3. ✅ Testar as queries nas tabelas de exemplo
-4. 🚀 Começar a desenvolver!
-
----
-
-## 🤖 Usar PostgreSQL para RAG (Retrieval-Augmented Generation)
-
-### O que é RAG?
-
-RAG combina **busca semântica** com **LLMs**:
-1. Documentos são convertidos em **embeddings** (vetores)
-2. Query do usuário também vira embedding
-3. Busca por **similaridade vetorial** encontra documentos relevantes
-4. LLM usa esses documentos como **contexto** para responder
-
-### Por que PostgreSQL para RAG?
-
-✅ **pgvector** - Extensão para armazenar e buscar vetores  
-✅ **ACID** - Transações confiáveis  
-✅ **Gratuito e open-source**  
-✅ **Escalável** - Suporta milhões de vetores  
-✅ **SQL familiar** - Usa SQL normal + operadores vetoriais  
-
-### Tabela já criada para RAG
-
-```sql
--- Ver documentos
-SELECT * FROM documents_summary;
-
--- Buscar por conteúdo
-SELECT content, metadata FROM documents WHERE content LIKE '%PostgreSQL%';
-
--- Ver documentos com embeddings
-SELECT id, content, has_embedding FROM documents_summary;
-```
-
-### Exemplo completo de RAG com Python
-
-Veja o arquivo `exemplo_rag_postgres.py` que mostra:
-
-1. **Como gerar embeddings** com OpenAI
-2. **Como armazenar** documentos com embeddings
-3. **Como fazer busca por similaridade**
-4. **Como usar com LLM** (RAG completo)
-
-#### Instalar dependências:
-
-```bash
-pip install psycopg2-binary openai python-dotenv
-```
-
-#### Configurar .env:
-
-```bash
-echo "OPENAI_API_KEY=sua_chave_aqui" > .env
-```
-
-#### Executar exemplo:
-
-```bash
-python exemplo_rag_postgres.py
-```
-
-### Operadores vetoriais do pgvector
-
-```sql
--- Distância L2 (Euclidiana)
-SELECT embedding <-> '[1,2,3]'::vector FROM documents;
-
--- Similaridade de coseno (recomendado para embeddings)
-SELECT embedding <=> '[1,2,3]'::vector FROM documents;
-
--- Produto interno
-SELECT embedding <#> '[1,2,3]'::vector FROM documents;
-```
-
-### Função de busca por similaridade
-
-```sql
--- Buscar os 3 documentos mais similares
-SELECT * FROM match_documents(
-    '[1.2, 0.5, ..., 0.8]'::vector(1536),  -- embedding da query
-    3,                                       -- quantos resultados
-    '{}'::jsonb                              -- filtros opcionais
-);
-
--- Com filtro por categoria
-SELECT * FROM match_documents(
-    '[1.2, 0.5, ..., 0.8]'::vector(1536),
-    5,
-    '{"category": "ai"}'::jsonb
-);
-```
-
-### Workflow RAG típico
+## 🐍 Conectar via Python
 
 ```python
-# 1. Usuário faz pergunta
-user_query = "Como usar Docker?"
+from sqlalchemy import create_engine
 
-# 2. Gerar embedding da pergunta
-query_embedding = get_embedding(user_query)
-
-# 3. Buscar documentos similares no PostgreSQL
-cursor.execute(
-    "SELECT * FROM match_documents(%s::vector, 5)",
-    (query_embedding,)
+engine = create_engine(
+    "postgresql+psycopg2://postgres:postgres123@localhost:5450/mydb"
 )
-docs = cursor.fetchall()
 
-# 4. Montar contexto
-context = "\n".join([doc[1] for doc in docs])
-
-# 5. Chamar LLM com contexto
-response = openai.chat.completions.create(
-    model="gpt-4",
-    messages=[
-        {"role": "system", "content": "Use apenas o contexto fornecido"},
-        {"role": "user", "content": f"Contexto: {context}\n\nPergunta: {user_query}"}
-    ]
-)
+with engine.connect() as conn:
+    result = conn.execute("SELECT COUNT(*) FROM conversations")
+    print(result.scalar())
 ```
 
-### Dicas de Performance
+---
 
-1. **Índice IVFFlat** - Já criado automaticamente para busca rápida
-2. **Normalizar embeddings** - Melhora a busca por similaridade de coseno
-3. **Chunk size** - 500-1000 tokens por documento é ideal
-4. **Batch inserts** - Insira múltiplos documentos de uma vez
+## 🔥 Troubleshooting
 
-### Comparação com outras soluções
+| Problema | Causa provável | Solução |
+|----------|---------------|---------|
+| Script não encontra `wsl` | WSL não instalado | Habilitar WSL2 no Windows |
+| Container não sobe | Podman machine não iniciou | Abrir Podman Desktop e aguardar a VM iniciar |
+| Porta 5450 ocupada | Outro processo usando a porta | Alterar a porta no script para `5451:5432` |
+| `aardvark-dns failed` | DNS do Podman não funciona no WSL sem systemd | Normal — o script já usa `--disable-dns` para contornar |
+| Tabelas não existem | init.sql não rodou | `.\podman_stop.ps1 -Clean` e então `.\podman_start.ps1` |
+| PgAdmin não conecta ao banco | Host incorreto | Use `postgres_db` como host (não `localhost`) no PgAdmin |
 
-| Solução | Prós | Contras |
-|---------|------|---------|
-| **PostgreSQL + pgvector** | ✅ Gratuito<br>✅ ACID<br>✅ SQL familiar | ❌ Menos features que dedicados |
-| **Pinecone** | ✅ Muito rápido<br>✅ Gerenciado | ❌ Pago<br>❌ Vendor lock-in |
-| **Qdrant** | ✅ Open-source<br>✅ Rápido | ❌ Mais complexo de setup |
-| **Supabase** | ✅ PostgreSQL managed<br>✅ UI | ❌ Limitações free tier |
-| **ChromaDB** | ✅ Simples<br>✅ Python-first | ❌ Menos robusto |
+---
 
-### Recursos adicionais sobre RAG
+## 🗄️ Equivalência de comandos Docker → Podman
 
+| Docker (README original) | Podman equivalente |
+|--------------------------|--------------------|
+| `docker compose up -d` | `.\podman_start.ps1` |
+| `docker compose down` | `.\podman_stop.ps1` |
+| `docker compose down -v` | `.\podman_stop.ps1 -Clean` |
+| `docker exec -it postgres_db psql ...` | `wsl -d podman-machine-default -- podman exec -it postgres_db psql ...` |
+| `docker ps` | `wsl -d podman-machine-default -- podman ps` |
+| `docker logs postgres_db` | `wsl -d podman-machine-default -- podman logs postgres_db` |
+
+---
+
+## 📚 Recursos
+
+- [Podman Desktop](https://podman-desktop.io/)
+- [PostgreSQL Docs](https://www.postgresql.org/docs/)
 - [pgvector GitHub](https://github.com/pgvector/pgvector)
-- [OpenAI Embeddings Guide](https://platform.openai.com/docs/guides/embeddings)
-- [LangChain + PostgreSQL](https://python.langchain.com/docs/integrations/vectorstores/pgvector)
+- [PgAdmin Docs](https://www.pgadmin.org/docs/)
