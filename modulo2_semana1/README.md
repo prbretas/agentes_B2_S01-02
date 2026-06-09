@@ -18,12 +18,13 @@ Um único script configura tudo: venv Python, dependências, containers e banco 
 
 O que ele faz automaticamente:
 1. Verifica Python e Podman/WSL
-2. Cria o arquivo `.env` com modelo (se não existir)
-3. Cria o ambiente virtual `.venv` e instala todas as dependências
-4. Sobe PostgreSQL + PgAdmin via Podman
-5. Valida que o banco está acessível e com dados
+2. **Verifica se o Ollama está rodando** e se o modelo configurado está disponível
+3. Cria o arquivo `.env` com modelo (se não existir)
+4. Cria o ambiente virtual `.venv` e instala todas as dependências
+5. Sobe PostgreSQL + PgAdmin via Podman
+6. Valida que o banco está acessível e com dados
 
-Depois do setup, só edite o `.env` com suas chaves de API e comece a rodar os exercícios.
+Depois do setup, use `.\run_jun8.ps1` para rodar os exercícios com um menu interativo.
 
 **Opções do script:**
 ```powershell
@@ -31,6 +32,51 @@ Depois do setup, só edite o `.env` com suas chaves de API e comece a rodar os e
 .\setup.ps1 -SkipVenv    # pula criação do venv (já existe)
 .\setup.ps1 -SkipPodman  # pula os containers (só configura Python)
 ```
+
+---
+
+## 🦙 Ollama — LLM local (jun8)
+
+Os exercícios de **jun8** usam [Ollama](https://ollama.com) como LLM local, eliminando a necessidade de chaves de API externas (OpenAI, Gemini).
+
+### Instalar e configurar
+
+1. Baixe e instale o Ollama: https://ollama.com
+2. Baixe o modelo padrão:
+   ```powershell
+   ollama pull llama3.2
+   ```
+3. Verifique os modelos disponíveis:
+   ```powershell
+   ollama list
+   ```
+
+### Trocar o modelo
+
+Edite o `.env` e altere `OLLAMA_MODEL`:
+```env
+OLLAMA_MODEL=llama3.2       # padrão — bom para resumo e classificação
+OLLAMA_MODEL=qwen2.5        # recomendado para tool calling (exe2)
+OLLAMA_MODEL=mistral-nemo   # alternativa para tool calling
+```
+
+### Rodar os exercícios
+
+```powershell
+# Menu interativo — recomendado
+.\run_jun8.ps1
+
+# Ou diretamente por linha de comando
+.\run_jun8.ps1 -Exe 1   # agente básico
+.\run_jun8.ps1 -Exe 2   # tool calling
+.\run_jun8.ps1 -Exe 3   # análise de feedbacks
+.\run_jun8.ps1 -All     # todos em sequência
+```
+
+O `run_jun8.ps1` verifica automaticamente:
+- Se o Ollama está rodando
+- Se o modelo configurado está disponível
+- Se o banco de dados está acessível
 
 ---
 
@@ -71,7 +117,7 @@ cd modulo2_semana1
 O script:
 - Cria a network necessária (com `--disable-dns`, solução para WSL sem systemd)
 - Sobe `postgres_db` na porta `5450`
-- Sobe `pgadmin` na porta `5050`
+- Sobe `pgadmin` na porta `5051`
 - Na segunda execução, apenas reinicia os containers existentes (dados preservados)
 
 **Saída esperada:**
@@ -86,12 +132,12 @@ O script:
 
 NAMES        STATUS        PORTS
 postgres_db  Up 3 seconds  0.0.0.0:5450->5432/tcp
-pgadmin      Up 3 seconds  0.0.0.0:5050->80/tcp
+pgadmin      Up 3 seconds  0.0.0.0:5051->80/tcp
 
 ✅ Pronto!
 
    PostgreSQL : localhost:5450  (user: postgres / senha: postgres123 / db: mydb)
-   PgAdmin    : http://localhost:5050  (email: admin@admin.com / senha: admin123)
+   PgAdmin    : http://localhost:5051  (email: admin@admin.com / senha: admin123)
 ```
 
 ---
@@ -113,7 +159,7 @@ pgadmin      Up 3 seconds  0.0.0.0:5050->80/tcp
 | Serviço    | Endereço              | Usuário           | Senha        |
 |------------|-----------------------|-------------------|--------------|
 | PostgreSQL | `localhost:5450`      | `postgres`        | `postgres123`|
-| PgAdmin    | http://localhost:5050 | `admin@admin.com` | `admin123`   |
+| PgAdmin    | http://localhost:5051 | `admin@admin.com` | `admin123`   |
 
 **String de conexão SQLAlchemy** (usada nos exercícios):
 ```
@@ -177,7 +223,7 @@ wsl -d podman-machine-default -- podman logs postgres_db
 
 ## 🔧 Configurar PgAdmin
 
-1. Acesse http://localhost:5050
+1. Acesse http://localhost:5051
 2. Login: `admin@admin.com` / `admin123`
 3. Clique em **Add New Server**
 4. Aba **General** → Name: `Local PostgreSQL`
@@ -217,6 +263,10 @@ with engine.connect() as conn:
 | `aardvark-dns failed` | DNS do Podman não funciona no WSL sem systemd | Normal — o script já usa `--disable-dns` para contornar |
 | Tabelas não existem | init.sql não rodou | `.\podman_stop.ps1 -Clean` e então `.\podman_start.ps1` |
 | PgAdmin não conecta ao banco | Host incorreto | Use `postgres_db` como host (não `localhost`) no PgAdmin |
+| Ollama não encontrado | Ollama não instalado ou não iniciado | Instale em https://ollama.com e execute `ollama serve` |
+| Modelo não disponível | Modelo não baixado | Execute `ollama pull llama3.2` |
+| Tool calling não funciona | Modelo sem suporte a tools | Troque para `qwen2.5` ou `llama3.1` no `.env` |
+| JSON inválido na resposta | Modelo retornou texto extra | Normal — o código já extrai JSON com regex como fallback |
 
 ---
 
@@ -239,3 +289,4 @@ with engine.connect() as conn:
 - [PostgreSQL Docs](https://www.postgresql.org/docs/)
 - [pgvector GitHub](https://github.com/pgvector/pgvector)
 - [PgAdmin Docs](https://www.pgadmin.org/docs/)
+

@@ -14,18 +14,26 @@ def find_env():
         env_file = parent / ".env"
         if env_file.exists():
             return env_file
-    raise FileNotFoundError(".env não encontrado")
+    return None  # .env é opcional quando usando Ollama
 
 
 env_path = find_env()
-print("env_path:", env_path)
+if env_path:
+    print("env_path:", env_path)
+    load_dotenv(env_path, override=True)
 
-load_dotenv(env_path, override=True)
+# Ollama expõe uma API compatível com OpenAI em localhost:11434/v1
+# Não precisa de API key — qualquer string serve como placeholder
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
 
 
 class SupportTicketAgentToolCalling:
     def __init__(self):
-        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.client = OpenAI(
+            base_url=OLLAMA_BASE_URL,
+            api_key="ollama"  # placeholder — Ollama não valida a key
+        )
 
         self.tools = [
             {
@@ -109,7 +117,7 @@ class SupportTicketAgentToolCalling:
             iteration += 1
 
             response = self.client.chat.completions.create(
-                model="gpt-4o-mini",
+                model=OLLAMA_MODEL,
                 messages=messages,
                 tools=self.tools,
                 tool_choice="auto"
