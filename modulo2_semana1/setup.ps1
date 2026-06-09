@@ -61,6 +61,22 @@ try {
     exit 1
 }
 
+# Ollama
+try {
+    $ollamaResp = Invoke-RestMethod -Uri "http://localhost:11434/api/tags" -Method GET -ErrorAction Stop
+    Write-OK "Ollama esta rodando em localhost:11434"
+    $modelList = ($ollamaResp.models | ForEach-Object { $_.name }) -join ", "
+    if ($modelList) {
+        Write-OK "Modelos disponiveis: $modelList"
+    } else {
+        Write-Warn "Nenhum modelo encontrado. Execute: ollama pull llama3.2"
+    }
+} catch {
+    Write-Warn "Ollama nao esta rodando ou nao foi encontrado."
+    Write-Warn "Os exercicios de jun8 usam Ollama como LLM local."
+    Write-Warn "Instale em: https://ollama.com  e execute: ollama pull llama3.2"
+}
+
 # WSL / Podman
 if (-not $SkipPodman) {
     $wslCheck = wsl -d $WSL_DISTRO -- echo "ok" 2>&1
@@ -91,7 +107,11 @@ if (-not (Test-Path $ENV_FILE) -or (Get-Item $ENV_FILE).Length -eq 0) {
 # --- Banco de dados (ja configurado pelo setup.ps1) ---
 DB_HOST=localhost
 
-# --- APIs de LLM (preencha com suas chaves) ---
+# --- Ollama (LLM local — principal recurso para jun8) ---
+OLLAMA_BASE_URL=http://localhost:11434/v1
+OLLAMA_MODEL=llama3.2
+
+# --- APIs de LLM (opcionais — nao necessarias para jun8) ---
 OPENAI_API_KEY=sua-chave-aqui
 GEMINI_API_KEY=sua-chave-aqui
 ANTHROPIC_API_KEY=sua-chave-aqui
@@ -190,7 +210,7 @@ if (-not $SkipPodman) {
                     "-e PGADMIN_DEFAULT_EMAIL=admin@admin.com " +
                     "-e PGADMIN_DEFAULT_PASSWORD=admin123 " +
                     "-e PGADMIN_CONFIG_SERVER_MODE=False " +
-                    "-p 5050:80 -v pgadmin_data:/var/lib/pgadmin " +
+                    "-p 5051:80 -v pgadmin_data:/var/lib/pgadmin " +
                     "docker.io/dpage/pgadmin4:latest"
             Invoke-WSL $cmd2 | Out-Null
         } else {
@@ -227,23 +247,37 @@ Write-Host "=============================================" -ForegroundColor Mage
 Write-Host ""
 Write-Host "  Ambiente Python:" -ForegroundColor White
 Write-Host "    Ativar venv  : .venv\Scripts\Activate.ps1" -ForegroundColor DarkGray
-Write-Host "    Rodar script : python modulo2_semana1\jun8\exe1\support_agent_basic.py" -ForegroundColor DarkGray
 Write-Host ""
 
 if (-not $SkipPodman) {
     Write-Host "  Banco de dados:" -ForegroundColor White
     Write-Host "    PostgreSQL : localhost:5450  (postgres / postgres123 / mydb)" -ForegroundColor DarkGray
-    Write-Host "    PgAdmin    : http://localhost:5050  (admin@admin.com / admin123)" -ForegroundColor DarkGray
+    Write-Host "    PgAdmin    : http://localhost:5051  (admin@admin.com / admin123)" -ForegroundColor DarkGray
     Write-Host "    DBeaver    : veja DBEAVER_CONEXAO.md para conectar" -ForegroundColor DarkGray
     Write-Host ""
 }
 
+Write-Host "  Ollama (LLM local para jun8):" -ForegroundColor White
+Write-Host "    Verificar   : ollama list" -ForegroundColor DarkGray
+Write-Host "    Baixar modelo: ollama pull llama3.2" -ForegroundColor DarkGray
+Write-Host "    Trocar modelo: edite OLLAMA_MODEL no .env" -ForegroundColor DarkGray
+Write-Host ""
+
+Write-Host "  Exercicios jun8 (use .\run_jun8.ps1 para menu rapido):" -ForegroundColor White
+Write-Host "    Exe1 — Agente basico   : python jun8\exe1\support_agent_basic.py" -ForegroundColor DarkGray
+Write-Host "    Exe2 — Tool calling    : python jun8\exe2\support_agent_toolcalling.py" -ForegroundColor DarkGray
+Write-Host "    Exe3 — Analise feedbacks: python jun8\exe3\feedback_agent.py" -ForegroundColor DarkGray
+Write-Host ""
+
 if (Select-String -Path $ENV_FILE -Pattern "sua-chave-aqui" -Quiet 2>$null) {
-    Write-Host "  ATENCAO: edite o arquivo .env e adicione suas chaves de API!" -ForegroundColor Yellow
+    Write-Host "  ATENCAO: edite o arquivo .env e adicione suas chaves de API (se necessario)!" -ForegroundColor Yellow
     Write-Host "    Arquivo: $ENV_FILE" -ForegroundColor Yellow
+    Write-Host "    Nota: os exercicios de jun8 usam apenas Ollama e nao precisam de chaves." -ForegroundColor Yellow
     Write-Host ""
 }
 
 Write-Host "  Para parar os containers : .\podman_stop.ps1" -ForegroundColor DarkGray
 Write-Host "  Para subir novamente     : .\podman_start.ps1" -ForegroundColor DarkGray
+Write-Host "  Para rodar jun8          : .\run_jun8.ps1" -ForegroundColor DarkGray
 Write-Host ""
+

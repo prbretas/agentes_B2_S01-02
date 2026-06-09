@@ -39,10 +39,15 @@ def get_ticket_conversation(ticket_id: int) -> dict:
 
 
 def classify_category_prompt(conversation_text: str) -> dict:
-    """Classifica a categoria usando OpenAI ao invés de Gemini"""
+    """Classifica a categoria usando Ollama (compatível com API OpenAI)"""
     from openai import OpenAI
-    
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+    ollama_base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+    ollama_model = os.getenv("OLLAMA_MODEL", "llama3.2")
+    client = OpenAI(
+        base_url=ollama_base_url,
+        api_key="ollama"  # placeholder — Ollama não valida a key
+    )
 
     prompt = f"""
 Você é um classificador de tickets de suporte.
@@ -55,7 +60,8 @@ Classifique a conversa em apenas uma das categorias abaixo:
 - conta
 - outros
 
-Responda em JSON com a chave "categoria".
+Responda SOMENTE com um JSON válido com a chave "categoria", sem nenhum texto adicional.
+Exemplo: {{"categoria": "pagamento"}}
 
 Conversa:
 {conversation_text}
@@ -63,19 +69,25 @@ Conversa:
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=ollama_model,
             messages=[
                 {"role": "user", "content": prompt}
             ],
-            response_format={"type": "json_object"},
             temperature=0.1
         )
 
-        result = json.loads(response.choices[0].message.content)
+        content = response.choices[0].message.content.strip()
+        # Extrai o JSON mesmo que o modelo adicione texto extra
+        import re
+        match = re.search(r'\{.*?\}', content, re.DOTALL)
+        if match:
+            result = json.loads(match.group())
+        else:
+            result = json.loads(content)
 
         return {
-            "categoria": result["categoria"],
-            "metodo": "llm_openai"
+            "categoria": result.get("categoria", "outros"),
+            "metodo": "llm_ollama"
         }
 
     except Exception as e:

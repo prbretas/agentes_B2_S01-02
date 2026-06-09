@@ -11,6 +11,7 @@ $PG_VOLUME   = "postgres_data"
 $PGA_VOLUME  = "pgadmin_data"
 $PG_NAME     = "postgres_db"
 $PGA_NAME    = "pgadmin"
+$PGA_PORT    = 5051   # porta do host para o PgAdmin (5050 pode estar em uso pelo WSL relay)
 
 # Converte o path do init.sql para Linux/WSL
 $SCRIPT_DIR   = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -36,7 +37,7 @@ if ($running -match $PG_NAME) {
     Write-Host "Containers ja estao rodando." -ForegroundColor Green
     Write-Host ""
     Write-Host "   PostgreSQL : localhost:5450  (postgres / postgres123 / mydb)"
-    Write-Host "   PgAdmin    : http://localhost:5050  (admin@admin.com / admin123)"
+    Write-Host "   PgAdmin    : http://localhost:${PGA_PORT}  (admin@admin.com / admin123)"
     Write-Host ""
     exit 0
 }
@@ -85,7 +86,7 @@ if ($allContainers -match $PGA_NAME) {
               "-e PGADMIN_DEFAULT_EMAIL=admin@admin.com " +
               "-e PGADMIN_DEFAULT_PASSWORD=admin123 " +
               "-e PGADMIN_CONFIG_SERVER_MODE=False " +
-              "-p 5050:80 " +
+              "-p ${PGA_PORT}:80 " +
               "-v ${PGA_VOLUME}:/var/lib/pgadmin " +
               "docker.io/dpage/pgadmin4:latest"
     Invoke-WSL $pgaCmd | Out-Null
@@ -104,5 +105,5 @@ Write-Host ""
 Write-Host "Pronto!" -ForegroundColor Green
 Write-Host ""
 Write-Host "   PostgreSQL : localhost:5450  (user: postgres / senha: postgres123 / db: mydb)"
-Write-Host "   PgAdmin    : http://localhost:5050  (email: admin@admin.com / senha: admin123)"
+Write-Host "   PgAdmin    : http://localhost:${PGA_PORT}  (email: admin@admin.com / senha: admin123)"
 Write-Host ""
