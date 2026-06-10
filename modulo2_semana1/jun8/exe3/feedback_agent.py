@@ -56,9 +56,9 @@ engine = create_engine(DB_URL)
 def get_all_feedbacks() -> list[dict]:
     """Busca todos os feedbacks da tabela feedbacks."""
     query = text("""
-        SELECT id, feedback_text
+        SELECT feedback_id AS id, feedback_text
         FROM feedbacks
-        ORDER BY id
+        ORDER BY feedback_id
     """)
     with engine.begin() as conn:
         rows = conn.execute(query).mappings().all()
@@ -252,3 +252,4 @@ class FeedbackAnalysisAgent:
 if __name__ == "__main__":
     agent = FeedbackAnalysisAgent()
     agent.run()
+
