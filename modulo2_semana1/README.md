@@ -78,6 +78,19 @@ O `run_jun8.ps1` verifica automaticamente:
 - Se o modelo configurado está disponível
 - Se o banco de dados está acessível
 
+### Scripts disponíveis por exercício
+
+| Exercício | Script | Descrição |
+|-----------|--------|-----------|
+| exe1 | `jun8/exe1/support_agent_basic.py` | Agente básico: classifica, resume e detecta followup |
+| exe2 | `jun8/exe2/support_agent_toolcalling.py` | Agente com loop de tool calling via Ollama |
+| exe2 | `jun8/exe2/classification.py` | Classificador isolado via Ollama |
+| exe3 | `jun8/exe3/feedback_agent.py` | Agente simples de feedbacks (salva JSON local) |
+| exe3 | `jun8/exe3/workflow_feedbacks.py` | Workflow completo: analisa, salva no banco e gera relatório |
+| exe3 | `jun8/exe3/agent_feedback.py` | Agente com tool calling completo para feedbacks |
+
+> **Nota sobre exe3:** há três implementações — `feedback_agent.py` é o mais simples, `workflow_feedbacks.py` é o workflow estruturado da aula, e `agent_feedback.py` é a versão agente com tool calling. Todos usam Ollama.
+
 ---
 
 ## 📋 O que está incluído
@@ -263,6 +276,8 @@ with engine.connect() as conn:
 | `aardvark-dns failed` | DNS do Podman não funciona no WSL sem systemd | Normal — o script já usa `--disable-dns` para contornar |
 | Tabelas não existem | init.sql não rodou | `.\podman_stop.ps1 -Clean` e então `.\podman_start.ps1` |
 | PgAdmin não conecta ao banco | Host incorreto | Use `postgres_db` como host (não `localhost`) no PgAdmin |
+| Containers não aparecem no Podman Desktop | Relay `win-sshproxy` inativo | Execute `.\podman_start.ps1` — o relay é ativado automaticamente |
+| DBeaver não conecta | `localhost` resolve como IPv6 | Use `127.0.0.1` no campo Host do DBeaver (não `localhost`) |
 | Ollama não encontrado | Ollama não instalado ou não iniciado | Instale em https://ollama.com e execute `ollama serve` |
 | Modelo não disponível | Modelo não baixado | Execute `ollama pull llama3.2` |
 | Tool calling não funciona | Modelo sem suporte a tools | Troque para `qwen2.5` ou `llama3.1` no `.env` |

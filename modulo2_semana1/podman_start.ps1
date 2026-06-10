@@ -18,6 +18,48 @@ $SCRIPT_DIR   = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $INIT_SQL_WIN = Join-Path $SCRIPT_DIR "init.sql"
 $INIT_SQL_WSL = ($INIT_SQL_WIN -replace "\\", "/") -replace "^([A-Za-z]):", { "/mnt/" + $_.Groups[1].Value.ToLower() }
 
+# --------------------------------------------------------------------------
+# Helper: garante que o win-sshproxy está ativo para o Podman Desktop enxergar
+# os containers na aba "Running". Sem ele, o Desktop não consegue conectar
+# ao socket do Podman via named pipe.
+# --------------------------------------------------------------------------
+function Start-PodmanDesktopRelay {
+    $winSshProxy = "$env:LOCALAPPDATA\Programs\Podman\win-sshproxy.exe"
+    $pipeName    = "podman-machine-default"
+    $sshPort     = 49890
+    $identity    = "$env:USERPROFILE\.local\share\containers\podman\machine\machine"
+    $socket      = "/run/user/1000/podman/podman.sock"
+
+    if (-not (Test-Path $winSshProxy)) {
+        Write-Host "    [!]  win-sshproxy.exe nao encontrado — Podman Desktop pode nao mostrar status." -ForegroundColor Yellow
+        return
+    }
+
+    # Verifica se o relay já está rodando para este pipe
+    $existing = Get-Process -Name "win-sshproxy" -ErrorAction SilentlyContinue |
+        Where-Object { (Get-WmiObject Win32_Process -Filter "ProcessId=$($_.Id)" -ErrorAction SilentlyContinue).CommandLine -like "*$pipeName*" }
+
+    if ($existing) {
+        Write-Host "    [OK] Relay Podman Desktop (win-sshproxy) ja esta ativo." -ForegroundColor Green
+        return
+    }
+
+    Write-Host "    Ativando relay para Podman Desktop..." -ForegroundColor Yellow
+    Start-Process -FilePath $winSshProxy `
+        -ArgumentList "127.0.0.1", $sshPort, $identity, "user", $socket, $pipeName `
+        -WindowStyle Hidden `
+        -ErrorAction SilentlyContinue
+
+    Start-Sleep -Seconds 2
+
+    $check = Get-Process -Name "win-sshproxy" -ErrorAction SilentlyContinue
+    if ($check) {
+        Write-Host "    [OK] Relay ativo — containers aparecerao como Running no Podman Desktop." -ForegroundColor Green
+    } else {
+        Write-Host "    [!]  Relay nao iniciou. Containers funcionam normalmente, mas podem nao aparecer no Desktop." -ForegroundColor Yellow
+    }
+}
+
 Write-Host ""
 Write-Host "=== Podman Start - modulo2_semana1 ===" -ForegroundColor Cyan
 Write-Host ""
@@ -35,6 +77,7 @@ function Invoke-WSL([string]$cmd) {
 $running = Invoke-WSL "podman ps --format '{{.Names}}'"
 if ($running -match $PG_NAME) {
     Write-Host "Containers ja estao rodando." -ForegroundColor Green
+    Start-PodmanDesktopRelay
     Write-Host ""
     Write-Host "   PostgreSQL : localhost:5450  (postgres / postgres123 / mydb)"
     Write-Host "   PgAdmin    : http://localhost:${PGA_PORT}  (admin@admin.com / admin123)"
@@ -93,8 +136,10 @@ if ($allContainers -match $PGA_NAME) {
 }
 
 # --------------------------------------------------------------------------
-# 5. Aguardar e confirmar
+# 5. Ativar relay para Podman Desktop + Aguardar e confirmar
 # --------------------------------------------------------------------------
+Start-PodmanDesktopRelay
+
 Write-Host "Aguardando containers iniciarem..." -ForegroundColor Yellow
 Start-Sleep -Seconds 3
 
