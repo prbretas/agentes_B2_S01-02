@@ -1,9 +1,9 @@
 # =============================================================================
-# podman_stop.ps1 — Para os containers PostgreSQL + PgAdmin
+# podman_stop.ps1 — Para os containers PostgreSQL + PgAdmin e finaliza o WSL
 #
 # Uso:
-#   .\podman_stop.ps1          → Para containers (mantém dados)
-#   .\podman_stop.ps1 -Clean   → Para e remove containers + volumes (apaga dados)
+#   .\podman_stop.ps1          → Para containers (mantém dados) + encerra WSL
+#   .\podman_stop.ps1 -Clean   → Para e remove containers + volumes (apaga dados) + encerra WSL
 # =============================================================================
 
 param(
@@ -50,4 +50,37 @@ if ($Clean) {
     Write-Host "Containers parados. Dados preservados." -ForegroundColor Green
     Write-Host "Para reiniciar: .\podman_start.ps1" -ForegroundColor DarkGray
 }
+
+# --------------------------------------------------------------------------
+# Finalizar win-sshproxy (relay do Podman Desktop)
+# --------------------------------------------------------------------------
+Write-Host ""
+Write-Host "Encerrando relay win-sshproxy..." -ForegroundColor Yellow
+$proxy = Get-Process -Name "win-sshproxy" -ErrorAction SilentlyContinue
+if ($proxy) {
+    $proxy | Stop-Process -Force -ErrorAction SilentlyContinue
+    Write-Host "    [OK] win-sshproxy encerrado." -ForegroundColor Green
+} else {
+    Write-Host "    [--] win-sshproxy nao estava rodando." -ForegroundColor DarkGray
+}
+
+# --------------------------------------------------------------------------
+# Encerrar a distro WSL (podman-machine-default) e o serviço vmcompute
+# --------------------------------------------------------------------------
+Write-Host ""
+Write-Host "Encerrando distro WSL '$WSL_DISTRO'..." -ForegroundColor Yellow
+wsl --terminate $WSL_DISTRO 2>$null
+Start-Sleep -Seconds 2
+
+Write-Host "Parando servico vmcompute (Hyper-V/WSL VM)..." -ForegroundColor Yellow
+$svc = Get-Service -Name "vmcompute" -ErrorAction SilentlyContinue
+if ($svc -and $svc.Status -eq "Running") {
+    Stop-Service -Name "vmcompute" -Force -ErrorAction SilentlyContinue
+    Write-Host "    [OK] Servico vmcompute parado." -ForegroundColor Green
+} else {
+    Write-Host "    [--] Servico vmcompute nao estava rodando." -ForegroundColor DarkGray
+}
+
+Write-Host ""
+Write-Host "Tudo encerrado." -ForegroundColor Green
 Write-Host ""

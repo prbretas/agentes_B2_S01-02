@@ -216,3 +216,7 @@ langfuse/*
 
 .venv312
 .venv312/*
+
+# Exercise run logs (generated at runtime — not versioned)
+# Pasta logs/ inteira é criada automaticamente ao rodar os exercícios
+**/logs/
